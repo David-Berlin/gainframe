@@ -8,6 +8,8 @@ the video track, or arriving in installers of dubious cleanliness. GainFrame
 is a clean-room replacement: a small Python/tkinter front-end over ffmpeg,
 with the whole pipeline visible in the log pane.
 
+**Product page & download:** [gainframe.cc](https://gainframe.cc)
+
 ## The one promise
 
 The video stream is **stream-copied bit-for-bit** (`-c:v copy`). It is never
