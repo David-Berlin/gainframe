@@ -1,0 +1,55 @@
+name: Build GainFrame (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Download ffmpeg (pinned static build, gyan.dev essentials)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.2-essentials_build.zip" -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_pkg
+          $bin = Get-ChildItem ffmpeg_pkg -Recurse -Directory -Filter bin | Select-Object -First 1
+          Copy-Item (Join-Path $bin.FullName "ffmpeg.exe") .
+          Copy-Item (Join-Path $bin.FullName "ffprobe.exe") .
+          ./ffmpeg.exe -version | Select-Object -First 1
+
+      - name: Build GainFrame.exe
+        run: pyinstaller GainFrame.spec --noconfirm
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory dist_pkg | Out-Null
+          Copy-Item dist/GainFrame.exe dist_pkg/
+          Copy-Item ffmpeg.exe, ffprobe.exe, README.md, LICENSE dist_pkg/
+          Compress-Archive -Path dist_pkg/* -DestinationPath GainFrame-windows.zip
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GainFrame-windows
+          path: GainFrame-windows.zip
+
+      - name: Attach to GitHub release (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: GainFrame-windows.zip
